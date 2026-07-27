@@ -1,103 +1,65 @@
-import json
-import asyncio
+import sqlite3
+import re
 import os
 
-from aiogram import Bot, Dispatcher
-from aiogram.types import Message, FSInputFile
-from aiogram.filters import Command
-
-
-TOKEN = os.getenv("BOT_TOKEN") or "ТВОЙ_ТОКЕН"
-
-
-bot = Bot(TOKEN)
-dp = Dispatcher()
-
-
-@dp.message(Command("start"))
-async def start(message: Message):
-    await message.answer(
-        "Отправь JSON файл.\n"
-        "Я сделаю SQL для PostgreSQL таблицы bot_kv."
-    )
-
-
-@dp.message(lambda m: m.document and m.document.file_name.endswith(".json"))
-async def convert(message: Message):
-
-    tg_file = await bot.get_file(
-        message.document.file_id
-    )
-
-    await bot.download_file(
-        tg_file.file_path,
-        "data.json"
-    )
-
-
-    with open(
-        "data.json",
-        "r",
-        encoding="utf-8"
-    ) as f:
-        data = json.load(f)
-
-
-    sql = []
-
-    sql.append(
-        "TRUNCATE TABLE bot_kv;"
-    )
-
-
-    for key, value in data.items():
-
-        json_value = json.dumps(
-            value,
-            ensure_ascii=False
+class BotKVManager:
+    @staticmethod
+    def import_from_original_file(db_path, original_file_path):
+        """
+        Автоматически читает исходный файл и вставляет данные в БД
+        """
+        if not os.path.exists(original_file_path):
+            print(f"❌ Файл не найден: {original_file_path}")
+            return False
+        
+        with open(original_file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Парсим INSERT
+        match = re.search(
+            r"VALUES\s*\(\s*'((?:[^']|'')*)'\s*,\s*(\d+)\s*,\s*'((?:[^']|'')*)'\s*,\s*'((?:[^']|'')*)'\s*,\s*'((?:[^']|'')*)'\s*,\s*'((?:[^']|'')*)'\s*,\s*(\w+)\s*,\s*'((?:[^']|'')*)'\s*,\s*'((?:[^']|'')*)'\s*,\s*'((?:[^']|'')*)'\s*,\s*'((?:[^']|'')*)'\s*,\s*'((?:[^']|'')*)'\s*\)",
+            content,
+            re.DOTALL
         )
-
-        # экранирование кавычек
-        json_value = json_value.replace(
-            "'",
-            "''"
-        )
-
-        key = key.replace(
-            "'",
-            "''"
-        )
-
-
-        sql.append(
-            f"""
-INSERT INTO bot_kv (key, value)
-VALUES ('{key}', '{json_value}'::jsonb);
-""".strip()
-        )
-
-
-    with open(
-        "bot_kv_import.sql",
-        "w",
-        encoding="utf-8"
-    ) as f:
-        f.write(
-            "\n\n".join(sql)
-        )
-
-
-    await message.answer_document(
-        FSInputFile(
-            "bot_kv_import.sql"
-        ),
-        caption="Готово ✅ Импортируй этот SQL в PostgreSQL"
-    )
-
-
-async def main():
-    await dp.start_polling(bot)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+        
+        if not match:
+            print("❌ Ошибка парсинга")
+            return False
+        
+        data = {
+            'users': match.group(1),
+            'downloads': match.group(2),
+            'bans': match.group(3),
+            'strikes': match.group(4).replace(":''з", ":'з"),
+            'users_map': match.group(5).replace(":''з", ":'з"),
+            'log_seq_map': match.group(6),
+            'bootstrap_done': 'true' if match.group(7).lower() == 'true' else 'false',
+            'first_seen': match.group(8),
+            'last_seen': match.group(9),
+            'stats': match.group(10),
+            'user_stats': match.group(11),
+            'user_stats_period': match.group(12)
+        }
+        
+        # Подключаемся к БД
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Создаём таблицу если её нет
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS bot_kv (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )
+        ''')
+        
+        # Вставляем данные
+        for key, value in data.items():
+            cursor.execute('INSERT OR REPLACE INTO bot_kv (key, value) VALUES (?, ?)', (key, value))
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"✅ Данные импортированы в {db_path}")
+        print(f"📊 Ключи: {', '.join(data.keys())}")
+        return True
