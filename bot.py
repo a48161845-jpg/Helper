@@ -18,7 +18,7 @@ async def main():
         await bot.send_gift(
             user_id=USER_ID,
             gift_id=ROSE_ID,
-            text="🌹 Роза от бота!"
+            text="🌹 Благодарим вас за поддержку @tiksavesbot ❤️ "
         )
         print("✅ Роза отправлена!")
     finally:
