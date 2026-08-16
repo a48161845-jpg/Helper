@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-USER_ID = 5721696778
-ROSE_ID = "5168103777563050263"
+USER_ID = 7233257134
+ROSE_ID = "5170145012310081615, 5170314324215857265"
 
 
 async def main():
@@ -18,7 +18,7 @@ async def main():
         await bot.send_gift(
             user_id=USER_ID,
             gift_id=ROSE_ID,
-            text="🌹 Благодарим вас за поддержку @tiksavesbot ❤️ "
+            text="Любимому пользователю бота - @tiksavesbot ❤️ "
         )
         print("✅ Роза отправлена!")
     finally:
