@@ -1,5 +1,6 @@
 import os
 import asyncio
+
 from aiogram import Bot
 from dotenv import load_dotenv
 
@@ -13,16 +14,15 @@ async def main():
 
     gifts = await bot.get_available_gifts()
 
-    rose = next(
-        gift for gift in gifts.gifts
-        if gift.id == "Rose"
-    )
+    print("Доступные подарки:")
 
-    await bot.send_gift(
-        user_id=USER_ID,
-        gift_id=rose.id
-    )
+    for gift in gifts.gifts:
+        print(
+            f"ID: {gift.id} | "
+            f"Stars: {gift.star_count}"
+        )
 
     await bot.session.close()
+
 
 asyncio.run(main())
