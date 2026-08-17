@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-USER_ID = 8595865097
+USER_ID = 8483152274
 ROSE_ID = "5170233102089322756"
 
 
